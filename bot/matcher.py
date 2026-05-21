@@ -1,34 +1,59 @@
 from rapidfuzz import fuzz
-from bot.db import get_connection
+from data.region_mapping import REGION_GROUPS
 
 
 def normalize(text: str) -> str:
     return " ".join(text.strip().lower().split())
 
 
-def best_match_location(input_text: str, table_name: str, column_name: str = "location_key"):
-    cleaned = normalize(input_text)
-    conn = get_connection()
-    rows = conn.execute(
-        f"SELECT DISTINCT {column_name} FROM {table_name}"
-    ).fetchall()
-    conn.close()
+def detect_region_from_state_or_pincode(user_input: str):
+    text = normalize(user_input)
 
-    candidates = [row[column_name] for row in rows]
-    if not candidates:
-        return None
+    # Basic pincode logic based on first digit
+    # India PIN zones:
+    # 1/2 = North, 3 = West, 4 = Maharashtra/MP area,
+    # 5 = AP/Telangana/Karnataka, 6 = South, 7/8 = East
+    digits = "".join(ch for ch in text if ch.isdigit())
 
-    best = None
+    if len(digits) == 6:
+        first_digit = digits[0]
+
+        if first_digit in ["1", "2"]:
+            return "north_india"
+
+        if first_digit == "3":
+            return "gujarat_rajasthan"
+
+        if first_digit == "4":
+            # This includes Maharashtra, MP, Chhattisgarh areas.
+            # We can default to Maharashtra unless you want more detailed mapping.
+            return "maharashtra"
+
+        if first_digit == "5":
+            return "andhra_telangana"
+
+        if first_digit == "6":
+            return "tamil_nadu_karnataka"
+
+        if first_digit in ["7", "8"]:
+            return "east_india"
+
+    # Exact or fuzzy state matching
+    best_region = None
     best_score = 0
 
-    for candidate in candidates:
-        score = fuzz.partial_ratio(cleaned, candidate)
-        if score > best_score:
-            best = candidate
-            best_score = score
+    for region_key, aliases in REGION_GROUPS.items():
+        for alias in aliases:
+            score = fuzz.ratio(text, alias)
+
+            if alias in text:
+                score = max(score, 95)
+
+            if score > best_score:
+                best_score = score
+                best_region = region_key
 
     if best_score >= 75:
-        return best
+        return best_region
 
     return None
-

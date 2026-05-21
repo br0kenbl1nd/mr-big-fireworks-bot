@@ -17,7 +17,7 @@ def welcome_message() -> str:
 
 
 def ask_location_message() -> str:
-    return "Please send your location. You can enter your city or state."
+    return "Please send your state or pincode so we can share the nearest shop contact."
 
 
 def invalid_message() -> str:
@@ -39,6 +39,6 @@ def supplier_message() -> str:
 
 def no_match_message() -> str:
     return (
-        "Sorry, we could not identify your location.\n"
-        "Please send only your city or state name."
+        "Sorry, we could not identify your state or pincode.\n"
+        "Please send your state name or 6-digit pincode."
     )
